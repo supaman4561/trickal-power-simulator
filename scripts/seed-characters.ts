@@ -32,7 +32,7 @@ async function main() {
         goldNodes: {
           board1: [row.board1_1, row.board1_2],
           board2: [row.board2_1, row.board2_2, row.board2_3],
-          board3: [row.board3_1, row.board3_2, row.board3_3, row.board3_4].filter(Boolean),
+          board3: [row.board3_1, row.board3_2, row.board3_3, row.board3_4].filter((v): v is string => Boolean(v)),
         },
       },
     })
