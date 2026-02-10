@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  email         String?        @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  plans         Plan[]
+  resources     UserResource?
+  createdAt     DateTime       @default(now())
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Application models
+model UserResource {
+  id                      String   @id @default(cuid())
+  userId                  String   @unique
+  coin                    Int      @default(0)
+  marshmallowGuardLow     Int      @default(0)
+  marshmallowGuardMid     Int      @default(0)
+  marshmallowGuardHigh    Int      @default(0)
+  marshmallowAttackLow    Int      @default(0)
+  marshmallowAttackMid    Int      @default(0)
+  marshmallowAttackHigh   Int      @default(0)
+  marshmallowSupportLow   Int      @default(0)
+  marshmallowSupportMid   Int      @default(0)
+  marshmallowSupportHigh  Int      @default(0)
+  purpleCrayon            Int      @default(0)
+  goldCrayon              Int      @default(0)
+  updatedAt               DateTime @updatedAt
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BoardTemplate {
+  id          String      @id @default(cuid())
+  raceType    String      @unique
+  race        String
+  boardType   String
+  goldNodes   Json
+  purpleNodes Json?
+  characters  Character[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Character {
+  id              String        @id @default(cuid())
+  gameId          String        @unique
+  name            String
+  role            String
+  personality     String
+  race            String
+  raceType        String
+  boardTemplateId String
+  boardTemplate   BoardTemplate @relation(fields: [boardTemplateId], references: [id])
+  baseHp          Int?
+  basePhysAtk     Int?
+  baseMagicAtk    Int?
+  basePhysDef     Int?
+  baseMagicDef    Int?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Plan {
+  id          String          @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characters  PlanCharacter[]
+}
+
+model PlanCharacter {
+  id                    String   @id @default(cuid())
+  planId                String
+  characterId           String
+  currentLevel          Int      @default(1)
+  targetLevel           Int
+  currentEquipRank      Int      @default(1)
+  targetEquipRank       Int
+  currentSkillLevel     Int      @default(1)
+  targetSkillLevel      Int
+  currentStar           Int
+  targetStar            Int
+  currentGoldProgress   Json
+  targetGoldProgress    Json
+  currentPurpleProgress Json?
+  targetPurpleProgress  Json?
+  plan                  Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+}
