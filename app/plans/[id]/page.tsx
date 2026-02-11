@@ -6,7 +6,10 @@ import { useEffect, useState, useCallback } from 'react'
 import Header from '@/app/components/Header'
 import CharacterTable from '@/app/components/CharacterTable'
 import AddCharacterModal from '@/app/components/AddCharacterModal'
+import ResourcePanel from '@/app/components/ResourcePanel'
+import CostSummary from '@/app/components/CostSummary'
 import { Plan, Character } from '@/lib/types'
+import { calculateTotalCost, ResourceCost } from '@/lib/calculations'
 
 export default function PlanDetailPage() {
   const { data: session, status } = useSession()
@@ -20,15 +23,17 @@ export default function PlanDetailPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [planName, setPlanName] = useState('')
+  const [ownedResources, setOwnedResources] = useState<ResourceCost | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/')
   }, [status, router])
 
   const fetchPlan = useCallback(async () => {
-    const [planRes, charsRes] = await Promise.all([
+    const [planRes, charsRes, resourcesRes] = await Promise.all([
       fetch(`/api/plans/${planId}`),
       fetch('/api/characters'),
+      fetch('/api/user/resources'),
     ])
     if (planRes.ok) {
       const planData = await planRes.json()
@@ -37,6 +42,11 @@ export default function PlanDetailPage() {
     }
     if (charsRes.ok) {
       setCharacters(await charsRes.json())
+    }
+    if (resourcesRes.ok) {
+      const data = await resourcesRes.json()
+      const { id: _id, userId: _userId, updatedAt: _updatedAt, ...rest } = data
+      setOwnedResources(rest)
     }
     setLoading(false)
   }, [planId])
@@ -151,12 +161,29 @@ export default function PlanDetailPage() {
           </button>
         </div>
 
+        <details className="mb-6" open>
+          <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground mb-2">
+            所持リソース
+          </summary>
+          <ResourcePanel />
+        </details>
+
         <CharacterTable
           planCharacters={plan.characters}
           characters={characters}
           onUpdate={updateCharacter}
           onRemove={removeCharacter}
         />
+
+        {(() => {
+          const characterRoles = new Map(characters.map((c) => [c.id, c.role]))
+          const totalCost = calculateTotalCost(plan.characters, characterRoles)
+          return (
+            <div className="mt-6">
+              <CostSummary cost={totalCost} owned={ownedResources} />
+            </div>
+          )
+        })()}
 
         <AddCharacterModal
           isOpen={showAddModal}
